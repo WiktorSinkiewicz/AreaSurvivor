@@ -1,44 +1,22 @@
-# PLUG AND PLAY SFMLCmakeSetup!
+🥔 Arena Survivor
+A simple C++ arena shooter game inspired by Brotato and Vampire Survivors. The goal is to survive endless waves of enemies on a closed map. The player controls movement, while the game handles aiming and shooting automatically.
 
----
+📋 Features
+Player Movement: Smooth 8-direction movement using WASD keys.
 
-## What is it?
+Combat System: Automatic targeting and shooting at the nearest enemy within range.
 
-I already set up an SFML project for you! Take it and enjoy! You don't need to know CMake!
+Enemy AI: Enemies spawn randomly at the map edges and constantly chase the player.
 
-![image](https://github.com/meemknight/SFMLCmakeSetup/assets/36445656/8d4d20b9-6b59-41cc-b2c4-b3c410f78b63)
+Collision System:
 
+Projectile hits Enemy -> Enemy takes damage/dies.
 
-<p>Opening the Solution:</p> 
+Enemy touches Player -> Player takes damage.
 
-<img src="https://raw.githubusercontent.com/meemknight/photos/master/llge1.gif" width="350">
+Game Loop: Full implementation of the input, update, and render cycle.
 
-Or
+🛠️ Tech Stack
+Language: C++ (Standard C++17 recommended)
 
-<img src="https://raw.githubusercontent.com/meemknight/photos/master/llge2.gif" width="500">
-
-Running the setup
-
-Go to CMakeLists.txt, <kbd>CTRL + S</kbd> to make sure the solution was built.
-
-Then, from this dropdown select mygame.exe
-
-<img src="https://raw.githubusercontent.com/meemknight/photos/master/llge3.gif" width="200">
-
-<kbd>Ctrl + F5</kbd> to build (<kbd>F5</kbd> oppens the debugger, you usually want to press <kbd>Ctrl + F5</kbd> because it oppens faster like this.
-
-<p>Adding files:<br>
-You should add .cpp in src/ and .h in include/ Whenever you add a new file CMake will ask you if you want to add that thing, say NO every time! I am already adding all of the things automatically!
-If you accidentally say YES, just remove that file from the CMake.lists
-</p>
-
-<p>Refreshing your changes:<br>
-After you add a file, the changes should be automatically added but if you want to be sure, you can refresh changes by saving the CMake file. If you want to make a hard refresh (you might have to do that sometimes) close Visual Studio, delete the out folder, reopen VS, <kbd>CTRL + S</kbd> on CMakeLists.txt</p>
-
-
-# IMPORTANT!
-  To ship the game: 
-  In Cmakelists.txt, set the PRODUCTION_BUILD flag to ON to build a shippable version of your game. This will change the file paths to be relative to your exe (RESOURCES_PATH macro), will remove the console, and also will change the asserts to not allow people to debug them. To make sure the changes take effect I recommend deleting the out folder to make a new clean build!
-
-
-  Also, if you read the CMAKE, even if you don't know CMAKE you should understand what happens with the comments there and you can add libraries and also remove the console from there if you need to! (there is a commented line for that!)
+Library: SFML (Simple and Fast Multimedia Library) - handles graphics, window management, and user input.
