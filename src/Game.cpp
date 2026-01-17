@@ -1,10 +1,9 @@
 #include "Game.h"
 #include <cmath>
-#include <cstdlib> // do rand()
-#include <ctime>   // do time()
+#include <cstdlib>
+#include <ctime>
 
 Game::Game() {
-    // Inicjalizacja generatora liczb losowych
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
     window.create(sf::VideoMode(Config::LOGICAL_WIDTH, Config::LOGICAL_HEIGHT),
@@ -16,7 +15,7 @@ Game::Game() {
 
     guiManager.init(window);
 
-    restartGame(); // Ustawia zmienne pocz¹tkowe
+    restartGame(); // ustawia zmienne pocz¹tkowe
 }
 
 Game::~Game() {
@@ -57,7 +56,7 @@ void Game::processEvents() {
     }
 }
 
-// Algorytm Letterboxing (Czarne pasy) - zachowuje proporcje gry
+// Algorytm Letterboxing (Czarne pasy)
 void Game::resizeView(const sf::RenderWindow& window, sf::View& view) {
     float windowRatio = window.getSize().x / (float)window.getSize().y;
     float viewRatio = Config::LOGICAL_WIDTH / Config::LOGICAL_HEIGHT;
@@ -70,12 +69,12 @@ void Game::resizeView(const sf::RenderWindow& window, sf::View& view) {
     if (windowRatio < viewRatio)
         horizontalSpacing = false;
 
-    // Jeœli okno jest za szerokie -> czarne pasy po bokach
+    // okno jest za szerokie -> czarne pasy po bokach
     if (horizontalSpacing) {
         sizeX = viewRatio / windowRatio;
         posX = (1 - sizeX) / 2.f;
     }
-    // Jeœli okno jest za wysokie -> czarne pasy góra/dó³
+    // okno jest za wysokie -> czarne pasy gora/dó³
     else {
         sizeY = windowRatio / viewRatio;
         posY = (1 - sizeY) / 2.f;
@@ -88,81 +87,120 @@ void Game::update(float dt) {
     ImGui::SFML::Update(window, sf::seconds(dt));
     guiManager.update(dt);
 
-    // Jeœli gra siê skoñczy³a, nie aktualizujemy logiki œwiata
-    if (isGameOver) {
-        // Tutaj ewentualnie logika menu koñca gry
-        return;
-    }
+    if (isGameOver) return;
 
-    // 1. Liczniki czasu
     gameTime += dt;
     spawnTimer += dt;
+    shootTimer += dt;
 
-    // 2. Spawnowanie wrogów
+    // --- 1. AUTOMATYCZNE STRZELANIE (Styl Brotato) ---
+    if (shootTimer >= Config::SHOOT_INTERVAL && !enemies.empty()) {
+        Enemy* target = findClosestEnemy(); // pomocnicza funkcja
+        if (target) {
+            sf::Vector2f baseDir = target->getPosition() - player->getPosition();
+            int count = player->getProjectileCount();
+
+            for (int i = 0; i < count; ++i) {
+                float angleOffset = (i - (count - 1) / 2.0f) * 10.0f; // Rozrzut 10 stopni
+                sf::Vector2f rotatedDir = rotateVector(baseDir, angleOffset);
+
+                projectiles.push_back(std::make_unique<Projectile>(
+                    player->getPosition(),
+                    rotatedDir,
+                    player->getDamage(),
+                    player->getPenetration()
+                ));
+            }
+            shootTimer = 0.f;
+        }
+    }
+
+    // --- 2. AKTUALIZACJA POCISKÓW ---
+    for (auto it = projectiles.begin(); it != projectiles.end();) {
+        (*it)->update(dt);
+        if ((*it)->isOffScreen()) it = projectiles.erase(it);
+        else ++it;
+    }
+
+    // --- 3. SPAWNOWANIE WROGÓW ZE SKALOWANIEM HP ---
     if (spawnTimer >= Config::SPAWN_INTERVAL) {
-        spawnEnemy();
+        int scaledHP = 1 + static_cast<int>(gameTime / 10.0f); // +1 HP co 10 sek
+        spawnEnemy(scaledHP);
         spawnTimer = 0.f;
     }
 
-    // 3. Logika Gracza
+    // --- 4. RESZTA LOGIKI ---
     player->handleInput(guiManager.wantsCaptureInput());
     player->update(dt);
 
-    // 4. Logika Wrogów
     for (auto& enemy : enemies) {
         enemy->update(dt, player->getPosition());
     }
 
-    // 5. Kolizje
     checkCollisions();
 }
 
-void Game::spawnEnemy() {
+void Game::spawnEnemy(int hp) {
     float x = 0, y = 0;
-    // Losujemy krawêdŸ: 0-góra, 1-prawo, 2-dó³, 3-lewo
+    // losuje krawedz: 0-gora, 1-prawo, 2-do³, 3-lewo
     int side = std::rand() % 4;
-    float margin = 50.f; // Spawnowanie nieco poza ekranem
+    float margin = 50.f; // spawnowanie nieco poza ekranem
 
-    if (side == 0) { // Góra
+    if (side == 0) {
         x = static_cast<float>(std::rand() % (int)Config::LOGICAL_WIDTH);
         y = -margin;
     }
-    else if (side == 1) { // Prawo
+    else if (side == 1) {
         x = Config::LOGICAL_WIDTH + margin;
         y = static_cast<float>(std::rand() % (int)Config::LOGICAL_HEIGHT);
     }
-    else if (side == 2) { // Dó³
+    else if (side == 2) {
         x = static_cast<float>(std::rand() % (int)Config::LOGICAL_WIDTH);
         y = Config::LOGICAL_HEIGHT + margin;
     }
-    else { // Lewo
+    else {
         x = -margin;
         y = static_cast<float>(std::rand() % (int)Config::LOGICAL_HEIGHT);
     }
 
-    enemies.push_back(std::make_unique<Enemy>(x, y));
+    enemies.push_back(std::make_unique<Enemy>(x, y, hp));
 }
 
 void Game::checkCollisions() {
-    sf::Vector2f playerPos = player->getPosition();
-    float pRadius = Config::PLAYER_RADIUS;
-    float eRadius = Config::ENEMY_RADIUS;
+    // Kolizje POCISK -> WRÓG
+    for (auto& proj : projectiles) {
+        for (auto it = enemies.begin(); it != enemies.end();) {
+            if (proj->canHit(it->get()) && checkCircleCollision(proj.get(), it->get())) {
+                (*it)->takeDamage(proj->getDamage());
+                proj->registerHit(it->get()); // Zmniejsza penetracjê i dodaje do listy trafionych
 
+                if ((*it)->isDead()) {
+                    player->addXP(Config::XP_PER_KILL);
+                    it = enemies.erase(it);
+                }
+                else {
+                    ++it;
+                }
+            }
+            else {
+                ++it;
+            }
+        }
+    }
+    // Usuñ pociski z penetracj¹ <= 0
+    projectiles.erase(std::remove_if(projectiles.begin(), projectiles.end(),
+        [](const auto& p) { return p->isExpired(); }), projectiles.end());
+
+    // Kolizje GRACZ -> WRÓG (Koniec gry)
     for (const auto& enemy : enemies) {
-        sf::Vector2f enemyPos = enemy->getPosition();
+        float dX = player->getPosition().x - enemy->getPosition().x;
+        float dY = player->getPosition().y - enemy->getPosition().y;
+        float distSq = dX * dX + dY * dY;
+        float radiusSum = Config::PLAYER_RADIUS + Config::ENEMY_RADIUS;
 
-        // Obliczamy dystans (dx*dx + dy*dy)
-        float dx = playerPos.x - enemyPos.x;
-        float dy = playerPos.y - enemyPos.y;
-        float distSq = dx * dx + dy * dy;
-
-        // Suma promieni do kwadratu (¿eby unikn¹æ powolnego pierwiastkowania w ka¿dej klatce)
-        float minDst = pRadius + eRadius;
-
-        if (distSq < minDst * minDst) {
+        if (distSq < radiusSum * radiusSum) {
             isGameOver = true;
-            // Opcjonalnie: DŸwiêk œmierci
-            break; // Wystarczy dotkn¹æ jednego
+            break;
         }
     }
 }
@@ -171,49 +209,101 @@ void Game::render() {
     window.clear(sf::Color::Black);
     window.setView(gameView);
 
-    // T³o
+    // 1. T³o i Obiekty œwiata
     sf::RectangleShape arenaBackground(sf::Vector2f(Config::LOGICAL_WIDTH, Config::LOGICAL_HEIGHT));
     arenaBackground.setFillColor(sf::Color(35, 35, 40));
     window.draw(arenaBackground);
 
-    // Wrogowie
-    for (const auto& enemy : enemies) {
-        enemy->draw(window);
-    }
+    for (const auto& enemy : enemies) enemy->draw(window);
+    for (const auto& proj : projectiles) proj->draw(window);
+    if (!isGameOver) player->draw(window);
 
-    // Gracz (rysowany tylko jeœli ¿yje, lub martwy w innym kolorze)
+    // 2. Interfejs ImGui
+    // U¿ywamy ImGui::GetMainViewport(), aby pozycjonowaæ UI wzglêdem FAKTYCZNEGO okna, a nie widoku logicznego
+    ImVec2 screenSize = ImGui::GetMainViewport()->Size;
+    ImVec2 screenCenter = ImVec2(screenSize.x / 2.f, screenSize.y / 2.f);
+
     if (!isGameOver) {
-        player->draw(window);
+        // --- HUD (Paski) ---
+        // Pozycjonujemy na œrodku góry, niezale¿nie od rozmiaru okna
+        ImGui::SetNextWindowPos(ImVec2(screenSize.x / 2.f, 20.f), ImGuiCond_Always, ImVec2(0.5f, 0.f));
+        ImGui::Begin("HUD", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground);
+
+        const float barWidth = 350.f;
+
+        // Minimalistyczny poziom
+        ImGui::Text("Lvl %d", player->getLevel());
+
+        // Pasek Zdrowia (Czerwony, bez etykiety)
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
+        ImGui::ProgressBar(player->getHpProgress(), ImVec2(barWidth, 12.f), "");
+        ImGui::PopStyleColor();
+
+        // Pasek XP (Zielony, bez etykiety)
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.1f, 0.7f, 0.1f, 1.0f));
+        ImGui::ProgressBar(player->getXPProgress(), ImVec2(barWidth, 8.f), "");
+        ImGui::PopStyleColor();
+
+        ImGui::End();
     }
-
-    // UI
-    float fps = 1.0f / clock.getElapsedTime().asSeconds();
-    guiManager.renderDebugPanel(fps, player->getPosition());
-
-    // --- GAME OVER SCREEN (ImGui) ---
-    if (isGameOver) {
-        // Wyœrodkowanie okna
-        ImGui::SetNextWindowPos(ImVec2(window.getSize().x / 2.f, window.getSize().y / 2.f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    else {
+        // --- EKRAN KONCA GRY ---
+        // Œrodkujemy okno dok³adnie na œrodku okna Windows
+        ImGui::SetNextWindowPos(screenCenter, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
         ImGui::Begin("Game Over", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize);
 
-        ImGui::Text("NIE ZYJESZ!");
-        ImGui::Text("Przetrwales: %.2f sekund", gameTime);
+        ImGui::Text("KONIEC GRY");
+        ImGui::Separator();
+        ImGui::Text("Przetrwales: %.1f s", gameTime);
+        ImGui::Text("Osiagniety poziom: %d", player->getLevel());
+        ImGui::Spacing();
 
-        if (ImGui::Button("Zagraj Ponownie", ImVec2(200, 50))) {
+        if (ImGui::Button("ZAGRAJ PONOWNIE", ImVec2(200, 50))) {
             restartGame();
         }
 
         ImGui::End();
     }
-    else {
-        // Licznik czasu w trakcie gry (np. w rogu)
-        ImGui::SetNextWindowPos(ImVec2(20, 20));
-        ImGui::Begin("Stats", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoBackground);
-        ImGui::Text("Czas: %.1f s", gameTime);
-        ImGui::Text("Wrogowie: %zu", enemies.size());
-        ImGui::End();
-    }
+
+    // Opcjonalny panel debugowania
+    float fps = 1.0f / clock.restart().asSeconds();
+    guiManager.renderDebugPanel(fps, player->getPosition());
 
     guiManager.render(window);
     window.display();
+}
+
+
+Enemy* Game::findClosestEnemy() {
+    Enemy* closest = nullptr;
+    float minDistSq = 1e9f; // Du¿a wartoœæ pocz¹tkowa
+
+    for (auto& enemy : enemies) {
+        float dx = enemy->getPosition().x - player->getPosition().x;
+        float dy = enemy->getPosition().y - player->getPosition().y;
+        float distSq = dx * dx + dy * dy;
+
+        if (distSq < minDistSq) {
+            minDistSq = distSq;
+            closest = enemy.get();
+        }
+    }
+    return closest;
+}
+
+sf::Vector2f Game::rotateVector(sf::Vector2f v, float angleDegrees) {
+    float radians = angleDegrees * (3.14159f / 180.f);
+    float cosA = std::cos(radians);
+    float sinA = std::sin(radians);
+    return sf::Vector2f(v.x * cosA - v.y * sinA, v.x * sinA + v.y * cosA);
+}
+
+bool Game::checkCircleCollision(Entity* e1, Entity* e2) {
+    float dx = e1->getPosition().x - e2->getPosition().x;
+    float dy = e1->getPosition().y - e2->getPosition().y;
+    float distSq = dx * dx + dy * dy;
+
+    // Suma promieni pocisku i wroga
+    float radiusSum = Config::BULLET_RADIUS + Config::ENEMY_RADIUS;
+    return distSq < (radiusSum * radiusSum);
 }

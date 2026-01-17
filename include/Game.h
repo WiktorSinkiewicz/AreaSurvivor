@@ -1,11 +1,12 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <memory>
-#include <vector> // NOWE
+#include <vector>
 #include "Constants.h"
 #include "GUIManager.h"
 #include "Player.h"
 #include "Enemy.h"
+#include "Projectile.h"
 
 class Game {
 public:
@@ -19,8 +20,7 @@ private:
     void render();
     void resizeView(const sf::RenderWindow& window, sf::View& view);
 
-    // NOWE: Metody logiki gry
-    void spawnEnemy();
+    void spawnEnemy(int hp);
     void checkCollisions();
     void restartGame();
 
@@ -30,9 +30,14 @@ private:
     std::unique_ptr<Player> player;
     sf::Clock clock;
 
-    // NOWE: Zmienne stanu gry
-    std::vector<std::unique_ptr<Enemy>> enemies; // Kontener na wrogów
-    float spawnTimer;    // Odlicza do kolejnego spawnu
-    float gameTime;      // Ca³kowity czas gry
-    bool isGameOver;     // Czy gra siê skoñczy³a
+    std::vector<std::unique_ptr<Enemy>> enemies;
+    std::vector<std::unique_ptr<Projectile>> projectiles;
+    float shootTimer = 0.f;
+    float spawnTimer;
+    float gameTime;
+    bool isGameOver;
+
+    Enemy* findClosestEnemy();
+    sf::Vector2f rotateVector(sf::Vector2f v, float angleDegrees);
+    bool checkCircleCollision(Entity* e1, Entity* e2);
 };

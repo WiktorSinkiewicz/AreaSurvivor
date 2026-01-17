@@ -1,17 +1,38 @@
 #pragma once
 #include <SFML/Graphics.hpp>
-#include "Entity.h" // Zak³adam, ¿e stworzysz te¿ Entity.h wg diagramu
+#include "Entity.h"
 #include "Constants.h"
-#include <cmath>
 
-// Player dziedziczy po Entity (wg diagramu)
 class Player : public Entity {
 public:
     Player();
-    void handleInput(bool blockInput); // blockInput = czy ImGui zajmuje myszkê
+    void handleInput(bool blockInput);
     void update(float dt) override;
-    // draw() jest w klasie bazowej Entity, ale mo¿na nadpisaæ
+
+    void takeDamage(float amount);
+    void addXP(int amount);
+
+    int getLevel() const { return level; }
+    float getXPProgress() const;
+    float getHpProgress() const;
+
+    float getDamage() const { return damage; }
+    int getProjectileCount() const { return projectileCount; }
+    int getPenetration() const { return penetration; }
 
 private:
-    float speed;
+    void levelUp();
+
+    // Statystyki przetrwania i walki
+    float maxHp;
+    float currentHp;
+    float moveSpeed;      // Mno¿nik prêdkoœci
+    float damage;
+    int projectileCount;
+    int penetration;
+
+    // Statystyki progresji
+    int level;
+    int currentXP;
+    int maxXP;
 };

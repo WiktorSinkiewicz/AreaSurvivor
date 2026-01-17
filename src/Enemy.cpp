@@ -2,7 +2,7 @@
 #include "Constants.h"
 #include <cmath> // do sqrt
 
-Enemy::Enemy(float startX, float startY) {
+Enemy::Enemy(float startX, float startY, int hp) : health(hp) {
     shape.setRadius(Config::ENEMY_RADIUS);
     shape.setFillColor(sf::Color::Red);
     shape.setOrigin(Config::ENEMY_RADIUS, Config::ENEMY_RADIUS);
