@@ -13,6 +13,11 @@ Player::Player() {
     projectileCount = 1;
     penetration = 1;
     pickupRange = Config::BASE_PICKUP_RANGE;
+    attackSpeed = Config::BASE_ATK_SPD;
+    armor = Config::BASE_ARMOR;
+    regen = Config::BASE_REGEN;
+    projectileKnockback = Config::BASE_PROJECTILE_KNCK;
+    currentRadius = Config::PLAYER_RADIUS;
 
     shape.setRadius(Config::PLAYER_RADIUS);
     shape.setFillColor(sf::Color(150, 50, 250));
@@ -31,20 +36,14 @@ bool Player::addXP(int amount) {
 
 void Player::levelUp() {
     level++;
-    // Przenosimy nadmiar XP na kolejny poziom zamiast zerowania
+
+    // Przenosimy nadmiar XP, aby nic siê nie zmarnowa³o
     currentXP -= maxXP;
-    if (currentXP < 0) currentXP = 0; // Zabezpieczenie przed b³êdami
+    if (currentXP < 0) currentXP = 0;
 
-    // Mocniejsze skalowanie: ka¿dy poziom wymaga o 20% wiêcej punktów ni¿ poprzedni
-    maxXP = static_cast<int>(maxXP * 1.2f) + 50;
-}
-
-float Player::getXPProgress() const {
-    return static_cast<float>(currentXP) / maxXP;
-}
-
-float Player::getHpProgress() const {
-    return currentHp / maxHp;
+    // Obliczamy nowy próg punktowy
+    // Przyk³ad: Poziom 2 (100 XP) -> Poziom 3 (100 * 1.15 + 40 = 155 XP)
+    maxXP = static_cast<int>(maxXP * Config::XP_EXPONENTIAL_GROWTH) + Config::XP_LINEAR_GROWTH;
 }
 
 void Player::update(float dt) {
@@ -68,16 +67,21 @@ void Player::update(float dt) {
         velocity = (movement / len) * (Config::PLAYER_SPEED * moveSpeed);
         move(velocity * dt);
     }
+    if (currentHp < maxHp) {
+        currentHp += regen * dt;
+        if (currentHp > maxHp) currentHp = maxHp;
+    }
 }
 
-void Player::handleInput(bool blockInput) {
-    // Miejsce na dodatkow¹ logikê sterowania
-}
+void Player::handleInput(bool blockInput) { /* kod wejscia */ }
 
 void Player::takeDamage(float amount) {
+    // Mechanika UNIKU
+    if ((rand() % 100) / 100.f < dodgeChance) return;
+
     if (invulnTimer <= 0.f) {
-        currentHp -= amount;
+        float reducedDamage = amount * (10.0f / (10.0f + armor));
+        currentHp -= reducedDamage;
         invulnTimer = Config::INVULNERABILITY_TIME;
-        if (currentHp < 0.f) currentHp = 0.f; // Zabezpieczenie przed ujemnym HP
     }
 }

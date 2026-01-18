@@ -3,19 +3,20 @@
 
 class Enemy : public Entity {
 public:
-    Enemy(float startX, float startY, int hp);
+    // Konstruktor musi przyjmowaæ te 5 parametrów zgodnie z Game::spawnEnemy
+    Enemy(float startX, float startY, float hp, float speed, float dmg);
 
-    // Ta wersja jest wymagana przez klasê bazow¹ Entity
-    void update(float dt) override {}
-
-    // Ta wersja jest u¿ywana w Game.cpp do œledzenia gracza
+    void update(float dt) override {};
     void update(float dt, sf::Vector2f targetPos);
 
     void applyKnockback(sf::Vector2f dir, float force);
-    void takeDamage(int amount) { health -= amount; }
+    void takeDamage(float amount) { health -= amount; }
     bool isDead() const { return health <= 0; }
+    float getDamage() const { return damage; }
 
 private:
-    int health;
-    sf::Vector2f knockbackVel;
+    float health;
+    float speed;
+    float damage;
+    sf::Vector2f knockbackVel; // To musi tu byæ!
 };
