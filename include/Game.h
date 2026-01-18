@@ -7,6 +7,7 @@
 #include "Player.h"
 #include "Enemy.h"
 #include "Projectile.h"
+#include "ExperienceOrb.h"
 
 class Game {
 public:
@@ -23,6 +24,7 @@ private:
     void spawnEnemy(int hp);
     void checkCollisions();
     void restartGame();
+    void resolveEnemyCollisions();
 
     sf::RenderWindow window;
     sf::View gameView;
@@ -32,6 +34,7 @@ private:
 
     std::vector<std::unique_ptr<Enemy>> enemies;
     std::vector<std::unique_ptr<Projectile>> projectiles;
+    std::vector<std::unique_ptr<ExperienceOrb>> expOrbs;
     float shootTimer = 0.f;
     float spawnTimer;
     float gameTime;
@@ -39,5 +42,19 @@ private:
 
     Enemy* findClosestEnemy();
     sf::Vector2f rotateVector(sf::Vector2f v, float angleDegrees);
-    bool checkCircleCollision(Entity* e1, Entity* e2);
+    bool checkCircleCollision(Entity* e1, Entity* e2, float r1, float r2);
+
+    enum class UpgradeType { HP, DMG, SPD, PROJ, PEN, PICK };
+
+    struct UpgradeOption {
+        UpgradeType type;
+        std::string title;
+        std::string description;
+    };
+
+    bool isUpgrading = false;
+    std::vector<UpgradeOption> availableUpgrades;
+
+    void generateUpgrades();
+    void applyUpgrade(UpgradeType type);
 };

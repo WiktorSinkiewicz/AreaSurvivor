@@ -11,17 +11,17 @@ Enemy::Enemy(float startX, float startY, int hp) : health(hp) {
     // Mo¿emy ustawiæ prêdkoœæ tutaj lub braæ ze sta³ych w update
 }
 
+void Enemy::applyKnockback(sf::Vector2f dir, float force) {
+    float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+    if (len != 0) knockbackVel = (dir / len) * force;
+}
+
 void Enemy::update(float dt, sf::Vector2f targetPos) {
-    sf::Vector2f myPos = getPosition();
-    sf::Vector2f direction = targetPos - myPos;
+    sf::Vector2f dir = targetPos - getPosition();
+    float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+    sf::Vector2f moveVec(0.f, 0.f);
+    if (len != 0) moveVec = (dir / len) * Config::ENEMY_SPEED;
 
-    // Obliczamy d³ugoœæ wektora (dystans)
-    float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
-
-    // Normalizacja (¿eby wróg nie teleportowa³ siê do gracza, tylko szed³ z sta³¹ prêdkoœci¹)
-    if (length > 0) {
-        direction /= length;
-        // Ruch: kierunek * prêdkoœæ * czas
-        move(direction * Config::ENEMY_SPEED * dt);
-    }
+    move((moveVec + knockbackVel) * dt);
+    knockbackVel *= 0.9f; // Wygasanie odrzutu
 }
