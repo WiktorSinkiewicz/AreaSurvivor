@@ -5,11 +5,21 @@
 class Player : public Entity {
 public:
     Player();
-    void handleInput(bool blockInput);
     void update(float dt) override;
     void takeDamage(float amount);
     bool addXP(int amount);
+    void heal(float amount) {
+        currentHp = std::min(maxHp, currentHp + amount);
+    }
+    void recordRareUpgrade(const std::string& id, const std::string& title) {
+        rareUpgrades[id] = title; // Mapa nadpisze nr ulepszen
+    }
+    const std::map<std::string, std::string>& getRareUpgrades() const { return rareUpgrades; }
 
+    sf::CircleShape auraShape;
+    void updateAuraVisuals();
+
+    // --- GETTERY ---
     float getCurrentHp() const { return currentHp; }
     float getMaxHp() const { return maxHp; }
     int getCurrentXp() const { return currentXP; }
@@ -25,60 +35,54 @@ public:
     int getPenetration() const { return penetration; }
     float getProjectileKnockback() const { return projectileKnockback; }
     float getRadius() const { return currentRadius; }
+    float getLuck() const { return luck; }
+    float getDamageMultiplier() const { return damageMultiplier; }
+    float getMoveSpeed() const { return moveSpeed; }
+    float getRegen() const { return regen; }
 
-    void upgradeHp() { maxHp += Config::UPGRADE_HP_VAL; currentHp += Config::UPGRADE_HP_VAL; }
-    void upgradeDmg() { damage += Config::UPGRADE_DMG_VAL; }
-    void upgradeSpd() { moveSpeed += Config::UPGRADE_SPD_VAL; }
-    void upgradeProj() { projectileCount++; }
-    void upgradePen() { penetration++; }
-    void upgradePickupRange() { pickupRange += Config::UPGRADE_PICKUP_VAL; }
-    void upgradeAtkSpd() { attackSpeed += Config::UPGRADE_ATK_SPD_VAL; }
-    void upgradeArmor() { armor += Config::UPGRADE_ARMOR_VAL; }
-    void upgradeRegen() { regen += Config::UPGRADE_REGEN_VAL; }
-    void upgradeKnockback() { projectileKnockback += Config::UPGRADE_KNCK_VAL; }
-
-    // W sekcji public klasy Player:
-    void activateMulti() { multiShotLevel++; } // Ka¿dy poziom to +1 dodatkowa fala pocisków
-    void activateRico() {
-        ricochetLevel++;
-        penetration += 1; // Ka¿dy poziom rykoszetu zwiêksza penetracjê o 1, by pocisk móg³ siê odbiæ
-    }
-    void activateConeShot() {
+    void addMaxHp(float amount) { maxHp += amount; currentHp += amount; }
+    void addBaseDamage(float amount) { damage += amount; }
+    void addDmgMultiplier(float amount) { damageMultiplier += amount; }
+    void addAtkSpd(float amount) { attackSpeed += amount; }
+    void addMoveSpd(float amount) { moveSpeed += amount; }
+    void addLuck(float amount) { luck += amount; }
+    void addArmor(float amount) { armor += amount; }
+    void addRegen(float amount) { regen += amount; }
+    void addDodge(float chance) { dodgeChance += chance; }
+    void addCritMultiplier(float amount) { critMultiplier += amount; }
+    void addPenetration(int amount) { penetration += amount; }
+    void addPickupRange(float amount) { pickupRange += amount; }
+    void addKnockback(float amount) { projectileKnockback += amount; }
+    void addConeShot() {
         coneShotLevel++;
-        projectileCount += 1; // Ka¿dy poziom Salwy dodaje 1 dodatkowy pocisk do serii
+        projectileCount++;
     }
-    void activateThorn() {
-        thornLevel++;
-    }
-    void activateGiant() {
-        giantLevel++;
-        float bonusHp = maxHp * 0.25f;
-        maxHp += bonusHp;
-        currentHp += bonusHp;
-        regen += 1.0f;
 
-        // Zwiêkszamy rozmiar gracza o 15% przy ka¿dym poziomie
-        currentRadius += Config::PLAYER_RADIUS * 0.15f;
+    void addFreezeChance(float amount) { freezeChance += amount; }
+    void addAura(float dmg, float range) { auraDamageMult += dmg; auraRadiusMult += range; }
+    void addRam(float reduction, float dmg) { flatDamageReduction += reduction; collisionDamageMult += dmg; }
+    void addRicochet(int levels) { ricochetLevel += levels; penetration += levels; }
+    void addVampire(int levels) { vampireLevel += levels; }
+    void addSize(float scale) {
+        currentRadius *= scale;
         shape.setRadius(currentRadius);
         shape.setOrigin(currentRadius, currentRadius);
     }
-    void activateGhost() {
-        ghostLevel++;
-        dodgeChance += 0.05f; // +5% do uniku za ka¿dym razem
-        if (dodgeChance > 0.5f) dodgeChance = 0.5f; // Cap 50%
-        moveSpeed += 0.1f;
-    }
+    void activateMulti() { multiShotLevel++; }
+    void activateThorn() { thornLevel++; }
+    void upgradeArmor() { armor += Config::UPGRADE_ARMOR_VAL; }
 
-    int multiShotLevel = 0;
-    int ricochetLevel = 0;
-    int coneShotLevel = 0;
-    int thornLevel = 0;
-    int giantLevel = 0;
-    int ghostLevel = 0;
+    int multiShotLevel = 0, coneShotLevel = 0, ricochetLevel = 0, thornLevel = 0, vampireLevel = 0;
+    int freezeLevel = 0, auraLevel = 0, ramLevel = 0;
+    float freezeChance = 0.0f, auraDamageMult = 0.0f, auraRadiusMult = 0.0f;
+    float flatDamageReduction = 0.0f, collisionDamageMult = 0.0f;
+    float critMultiplier = 2.0f, dodgeChance = 0.0f;
 
 private:
     void levelUp();
     float invulnTimer = 0.f;
-    float maxHp, currentHp, moveSpeed, damage, pickupRange, attackSpeed, armor, regen, projectileKnockback, dodgeChance, currentRadius;
+    float maxHp, currentHp, moveSpeed, damage, pickupRange, attackSpeed, armor, regen, projectileKnockback, currentRadius;
+    float luck = 0.0f, damageMultiplier = 1.0f;
     int level, currentXP, maxXP, projectileCount, penetration;
+    std::map<std::string, std::string> rareUpgrades;
 };

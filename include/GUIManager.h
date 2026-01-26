@@ -6,7 +6,7 @@
 class GUIManager {
 public:
     void init(sf::RenderWindow& window);
-    void update(float dt); // Tu wo³amy ImGui::SFML::Update
+    void update(float dt); // Tu jest ImGui::SFML::Update
     void processEvent(sf::RenderWindow& window, const sf::Event& event);
     void render(sf::RenderWindow& window);
 

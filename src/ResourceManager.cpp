@@ -6,17 +6,32 @@ ResourceManager& ResourceManager::get() {
     return instance;
 }
 
-void ResourceManager::loadTexture(const std::string& name, const std::string& path) {
-    sf::Texture tex;
-    if (tex.loadFromFile(path)) {
-        textures[name] = tex;
+bool ResourceManager::loadFont(const std::string& name, const std::string& path) {
+    // Sprawdzamy czy plik w ogóle istnieje na dysku przed ³adowaniem
+    sf::Font font;
+    if (font.loadFromFile(path)) {
+        fonts[name] = font;
+        return true;
     }
-    else {
-        // Fallback: jeœli nie uda siê za³adowaæ, tworzymy pust¹ teksturê
-        std::cerr << "Blad ladowania tekstury: " << path << std::endl;
+
+    // Jeœli nie, spróbujmy samej nazwy (plik obok .exe)
+    if (font.loadFromFile("ARIAL.TTF")) {
+        fonts[name] = font;
+        return true;
     }
+
+    std::cerr << "!!! CRITICAL ERROR: Could not find font face at: " << path << std::endl;
+    return false;
 }
 
-sf::Texture& ResourceManager::getTexture(const std::string& name) {
-    return textures[name];
+sf::Font& ResourceManager::getFont(const std::string& name) {
+    // Zamiast .at(name), u¿ywamy bezpieczniejszego sprawdzenia, by unikn¹æ image_8c3763.png
+    auto it = fonts.find(name);
+    if (it != fonts.end()) {
+        return it->second;
+    }
+
+    // Fallback: Zwracamy pusty obiekt czcionki, ¿eby SFML narysowa³ prostok¹ty zamiast wywalaæ grê
+    static sf::Font defaultFont;
+    return defaultFont;
 }
